@@ -1,0 +1,140 @@
+#!/bin/bash
+log="$HOME/logs/logytdl"
+
+#TODO : gérer les echecs de téléchargement
+waitandsee () {
+
+#on attend trois secondes le temps que le download commence.
+	sleep 3
+
+	if [ -z $(find $path/$i -type d -empty) ]
+	then
+	zenity --error --title "Echec du téléchargement"
+	return false
+
+	fi
+
+}
+repwork () {
+
+	path=$HOME/.tmpdownload
+
+	if [ ! -d "$path" ] ; then
+
+		mkdir $path
+	fi
+
+	cd $path
+
+	i=1
+
+
+	while [ -d "$path/$i" ]
+	do
+		let i=i+1
+
+	done
+	echo $i
+
+	mkdir $path/$i
+
+	wrk="$path/$i"
+
+	cd $wrk
+	
+}
+
+#formulaire a renseigner
+formulaire () {
+#this is necessary to handle files with spaces in the name
+	#default is IFS=$" \t\n" (notice the literal space before "\t")
+	IFS=$'\t\n'
+
+		#On crée le formulaire en stockant les valeurs de sortie dans $parametres :/
+		parametres=`zenity --forms \
+		    --title="Formulaire Téléchargement" \
+		    --text="Bienvenue" \
+		    --add-entry="link" \
+		    --add-entry="titre" \
+		    --add-entry="artiste" \
+		    --add-entry="genre" \
+		    --add-entry="label" \
+		    --separator="|"`
+		#echo $parametres
+
+		#Si on clique sur le bouton Annuler le programme s'arrête
+		if [ "$?" -eq 1 ]; then
+
+		    exit
+		fi
+		#Sinon on continue
+		#On scinde les paramètres en plusieurs variables
+		link=$(echo "$parametres" | cut -d "|" -f1)
+		titre=$(echo "$parametres" | cut -d "|" -f2)
+		artist=$(echo "$parametres" | cut -d "|" -f3)
+		genre=$(echo "$parametres" | cut -d "|" -f4)
+		label=$(echo "$parametres" | cut -d "|" -f5)
+
+		#echo $link
+
+}
+
+convertit() {
+		cd $wrk
+
+		# télchargement de thumbnail
+		#wget $(youtube-dl --get-thumbnail $link)
+		#mv *.jpg ~/Musique/$artist.$titre.jpg
+
+		#Appartion de la fenetre Zenity de progression de téléchargement
+
+		(
+		youtube-dl --no-playlist $link
+		) |
+		zenity --progress \
+		  --title="téléchargement" \
+		  --text="téléchargement de $titre en cours" \
+		  --pulsate \
+		  --auto-close
+		#on repere le fichier de sortie et on le met dans une variable
+
+		fichier=$(ls -p)
+
+
+		#Apparition de la fenetre Zenity de progression de conversion
+		(
+		ffmpeg -i $fichier -vn -ac 2 -ab 320k $artist.$titre.mp3
+		) |
+		zenity --progress \
+		  --title="extraction" \
+		  --text="extraction de $titre en cours" \
+		  --pulsate \
+		  --auto-close
+
+
+		track=$artist.$titre.mp3
+		#intégration  des tags
+
+		id3v2 -a $artist $track
+		id3v2 -t $titre $track
+		id3v2 -g $genre $track
+		id3v2 -c $label $track
+
+		# normalisation Mp3
+		mp3gain -a -k $track
+
+		mv $track ~/Musique
+		cd .. && rm -r $wrk
+}
+
+logit () {
+	echo "$link $track $(date)">>$log
+}
+
+cd /home/$USER/.tmpdownload
+
+repwork && formulaire && convertit && logit
+
+
+
+exit 0
