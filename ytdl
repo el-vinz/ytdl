@@ -131,10 +131,8 @@ logit () {
 	echo "$link $track $(date)">>$log
 }
 
-cd /home/$USER/.tmpdownload
+cd $HOME/.tmpdownload
 
 repwork && formulaire && convertit && logit
 
 
-
-exit 0
