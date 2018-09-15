@@ -1,5 +1,8 @@
 #!/bin/bash
 log="$HOME/logs/logytdl"
+#import des fonctions
+
+. ./download_it.sh
 
 #TODO : gérer les echecs de téléchargement
 waitandsee () {
@@ -20,7 +23,6 @@ repwork () {
 	path=$HOME/.tmpdownload
 
 	if [ ! -d "$path" ] ; then
-
 		mkdir $path
 	fi
 
@@ -28,14 +30,10 @@ repwork () {
 
 	i=1
 
-
 	while [ -d "$path/$i" ]
 	do
 		let i=i+1
-
 	done
-	echo $i
-
 	mkdir $path/$i
 
 	wrk="$path/$i"
@@ -43,9 +41,12 @@ repwork () {
 	cd $wrk
 	
 }
+cd $wrk
 
 #formulaire a renseigner
+
 formulaire () {
+
 #this is necessary to handle files with spaces in the name
 	#default is IFS=$" \t\n" (notice the literal space before "\t")
 	IFS=$'\t\n'
@@ -64,7 +65,6 @@ formulaire () {
 
 		#Si on clique sur le bouton Annuler le programme s'arrête
 		if [ "$?" -eq 1 ]; then
-
 		    exit
 		fi
 		#Sinon on continue
@@ -79,29 +79,11 @@ formulaire () {
 
 }
 
-convertit() {
+w_i_p () {
 		cd $wrk
 
-		# télchargement de thumbnail
-		#wget $(youtube-dl --get-thumbnail $link)
-		#mv *.jpg ~/Musique/$artist.$titre.jpg
-
-		#Appartion de la fenetre Zenity de progression de téléchargement
-
-		(
-		youtube-dl --no-playlist $link
-		) |
-		zenity --progress \
-		  --title="téléchargement" \
-		  --text="téléchargement de $titre en cours" \
-		  --pulsate \
-		  --auto-close
-		#on repere le fichier de sortie et on le met dans une variable
-
-		fichier=$(ls -p)
-
-
-		#Apparition de la fenetre Zenity de progression de conversion
+		download_it $link $titre
+	
 		(
 		ffmpeg -i $fichier -vn -ac 2 -ab 320k $artist.$titre.mp3
 		) |
@@ -111,9 +93,7 @@ convertit() {
 		  --pulsate \
 		  --auto-close
 
-
 		track=$artist.$titre.mp3
-		#intégration  des tags
 
 		id3v2 -a $artist $track
 		id3v2 -t $titre $track
@@ -124,7 +104,7 @@ convertit() {
 		mp3gain -a -k $track
 
 		mv $track ~/Musique
-		cd .. && rm -r $wrk
+		rm -r $wrk
 }
 
 logit () {
@@ -133,6 +113,6 @@ logit () {
 
 cd $HOME/.tmpdownload
 
-repwork && formulaire && convertit && logit
+repwork && formulaire && w_i_p && logit
 
 
